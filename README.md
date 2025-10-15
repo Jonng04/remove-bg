@@ -28,19 +28,23 @@
 ## ✨ Tính năng
 
 ### 🎯 **Core Features**
+
 - ✅ **AI xóa nền tự động** - Sử dụng mô hình U2-Net
 - ✅ **Xử lý nhanh** - Chỉ trong vài giây
 - ✅ **Không giới hạn** - Xử lý không giới hạn số lượng
 - ✅ **Miễn phí 100%** - Hoàn toàn miễn phí
 
 ### 🎨 **Giao diện**
+
 - 🖱️ **Drag & Drop** - Kéo thả ảnh dễ dàng
 - 👀 **Preview trực tiếp** - Xem ảnh trước khi xử lý
 - ⚖️ **So sánh Before/After** - Xem kết quả rõ ràng
 - 📱 **Responsive** - Tương thích mọi thiết bị
 
 ### 📁 **Xuất đa định dạng**
+
 Hỗ trợ xuất nhiều định dạng ảnh:
+
 - 🖼️ **PNG** - Trong suốt, chất lượng cao
 - 📸 **JPG** - Nền trắng, kích thước nhỏ
 - 🌐 **WEBP** - Nén tốt, trong suốt
@@ -52,11 +56,13 @@ Hỗ trợ xuất nhiều định dạng ảnh:
 ## 🚀 Demo
 
 ### Giao diện chính
+
 <div align="center">
   <img src="https://via.placeholder.com/800x500/f3f4f6/374151?text=Upload+Interface" alt="Upload Interface" width="80%">
 </div>
 
 ### Kết quả xóa nền
+
 <div align="center">
   <img src="https://via.placeholder.com/800x500/f3f4f6/374151?text=Before+%26+After+Comparison" alt="Result Comparison" width="80%">
 </div>
@@ -91,9 +97,34 @@ Hỗ trợ xuất nhiều định dạng ảnh:
   </tr>
 </table>
 
+## ☁️ Deploy lên Render
+
+Hướng dẫn nhanh để deploy trên Render.com (hoặc tương tự Heroku):
+
+1. Đăng nhập vào Render và tạo một **Web Service** mới.
+2. Chọn repository `Jonng04/remove-bg` (hoặc push repo của bạn lên GitHub và chọn repo đó).
+3. Thiết lập:
+  - Branch: `main`
+  - Environment: `Python`
+  - Build Command: `pip install -r requirements.txt`
+  - Start Command: `gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120`
+
+Hoặc bạn có thể cung cấp file `render.yaml` (đã có trong repo) để cấu hình tự động.
+
+### Lưu ý quan trọng
+- Model AI (rembg) sẽ tự động tải model khi lần đầu chạy. Model có thể lớn (~tens-hundreds MB) — hãy đảm bảo plan của bạn có đủ băng thông và storage.
+- Rembg dùng `onnxruntime` để inference. Để dùng GPU trên Render (nếu có), cài `onnxruntime-gpu` thay vì `onnxruntime`.
+- Render Starter (free/cheap) có giới hạn RAM/CPU: nếu xử lý ảnh lớn (>2000px) hoặc nhiều request cùng lúc, cân nhắc nâng plan hoặc dùng worker queue.
+
+### Tối ưu đề nghị cho production
+- Resize ảnh trước khi inference (giải pháp nhẹ: giới hạn max dimension 1024px) để giảm RAM và thời gian.
+- Sử dụng queue (Redis + worker) nếu dự kiến nhiều request đồng thời.
+- Cache kết quả theo hash của file upload để tránh xử lý lại cùng một ảnh.
+
 ## 📦 Cài đặt
 
 ### Yêu cầu
+
 - Python 3.8 trở lên
 - pip (Python package manager)
 - 2GB RAM trở lên
@@ -109,12 +140,14 @@ cd remove-bg
 ### Bước 2: Tạo môi trường ảo (khuyến nghị)
 
 **Windows:**
+
 ```powershell
 python -m venv .venv
 .venv\Scripts\activate
 ```
 
 **Linux/Mac:**
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate
@@ -151,6 +184,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 Xóa nền ảnh thông qua API.
 
 **Request:**
+
 ```bash
 curl -X POST "http://localhost:8000/remove-bg" \
   -F "file=@your-image.jpg" \
@@ -158,6 +192,7 @@ curl -X POST "http://localhost:8000/remove-bg" \
 ```
 
 **Python Example:**
+
 ```python
 import requests
 
@@ -170,6 +205,7 @@ with open("output.png", "wb") as f:
 ```
 
 **Response:**
+
 - Content-Type: `image/png`
 - Body: Binary image data (PNG với nền trong suốt)
 
@@ -215,6 +251,7 @@ result = remove(img, model_name="u2net_human_seg")
 ### Tùy chỉnh giao diện
 
 Chỉnh sửa file `static/index.html` để thay đổi:
+
 - Màu sắc (Tailwind classes)
 - Layout
 - Text content
@@ -239,13 +276,13 @@ Giảm kích thước ảnh trước khi upload hoặc tăng RAM cho server.
 ## 📊 Performance
 
 | Kích thước ảnh | Thời gian xử lý | RAM sử dụng |
-|---------------|-----------------|-------------|
-| 500x500       | ~1-2s          | ~500MB      |
-| 1000x1000     | ~2-3s          | ~800MB      |
-| 2000x2000     | ~4-6s          | ~1.2GB      |
-| 4000x4000     | ~8-12s         | ~2GB        |
+| -------------- | --------------- | ----------- |
+| 500x500        | ~1-2s           | ~500MB      |
+| 1000x1000      | ~2-3s           | ~800MB      |
+| 2000x2000      | ~4-6s           | ~1.2GB      |
+| 4000x4000      | ~8-12s          | ~2GB        |
 
-*Thời gian trên CPU Intel i5, 8GB RAM*
+_Thời gian trên CPU Intel i5, 8GB RAM_
 
 ## 🤝 Contributing
 
