@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Background Remover - Xóa Nền Ảnh</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+      * {
+        font-family: "Inter", sans-serif;
+      }
+
+      .checkerboard {
+        background-color: #ffffff;
+        background-image: linear-gradient(45deg, #f5f5f5 25%, transparent 25%),
+          linear-gradient(-45deg, #f5f5f5 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #f5f5f5 75%),
+          linear-gradient(-45deg, transparent 75%, #f5f5f5 75%);
+        background-size: 16px 16px;
+        background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+      }
+
+      .smooth-transition {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .image-compare-container {
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Custom Dropdown Styling */
+      .custom-dropdown {
+        position: relative;
+        min-width: 200px;
+      }
+
+      .dropdown-button {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 10px 14px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #111827;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .dropdown-button:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+      }
+
+      .dropdown-button.active {
+        border-color: #111827;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+      }
+
+      .dropdown-arrow {
+        transition: transform 0.2s ease;
+      }
+
+      .dropdown-button.active .dropdown-arrow {
+        transform: rotate(180deg);
+      }
+
+      .dropdown-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 50;
+        max-height: 320px;
+        overflow-y: auto;
+      }
+
+      .dropdown-menu.show {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+      }
+
+      .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        font-size: 14px;
+        color: #374151;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .dropdown-item:hover {
+        background: #f3f4f6;
+      }
+
+      .dropdown-item.selected {
+        background: #f9fafb;
+        color: #111827;
+        font-weight: 500;
+      }
+
+      .dropdown-item:first-child {
+        border-radius: 8px 8px 0 0;
+      }
+
+      .dropdown-item:last-child {
+        border-radius: 0 0 8px 8px;
+      }
+
+      .format-icon {
+        font-size: 18px;
+        line-height: 1;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen antialiased">
+    <!-- Navigation -->
+    <nav class="bg-white border-b border-gray-200">
+      <div class="container mx-auto px-6 py-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <svg
+              class="w-6 h-6 text-gray-900"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+            <span class="text-xl font-semibold text-gray-900"
+              >Background Remover</span
+            >
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container mx-auto px-6 py-12 max-w-5xl">
+      <!-- Header -->
+      <div class="text-center mb-12">
+        <h1 class="text-2xl font-semibold text-gray-900 mb-3">
+          Xóa nền ảnh tự động
+        </h1>
+      </div>
+
+      <!-- Upload Area -->
+      <div
+        class="bg-white border border-gray-200 rounded-lg p-8 mb-6 smooth-transition hover:shadow-md"
+      >
+        <div
+          id="dropZone"
+          class="border-2 border-dashed border-gray-300 rounded-lg p-16 text-center smooth-transition hover:border-gray-400 hover:bg-gray-50 cursor-pointer"
+        >
+          <input type="file" id="fileInput" accept="image/*" class="hidden" />
+          <div id="uploadPrompt">
+            <svg
+              class="mx-auto h-12 w-12 text-gray-400 mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            <p class="text-base font-medium text-gray-900 mb-1">
+              Click để chọn hoặc kéo thả ảnh vào đây
+            </p>
+            <p class="text-sm text-gray-500">PNG, JPG, JPEG (tối đa 10MB)</p>
+          </div>
+          <img
+            id="previewImage"
+            class="hidden max-h-72 mx-auto rounded-lg shadow-sm"
+          />
+        </div>
+
+        <div class="flex gap-3 mt-6">
+          <button
+            id="uploadBtn"
+            class="flex-1 bg-gray-900 text-white font-medium py-3 px-6 rounded-lg smooth-transition hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-900"
+            disabled
+          >
+            <span id="btnText">Xóa nền ảnh</span>
+          </button>
+          <button
+            id="resetBtn"
+            class="bg-white border border-gray-300 text-gray-700 font-medium py-3 px-6 rounded-lg smooth-transition hover:bg-gray-50 hidden"
+          >
+            Chọn ảnh khác
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div
+        id="loading"
+        class="hidden bg-white border border-gray-200 rounded-lg p-8 mb-6"
+      >
+        <div class="flex items-center justify-center py-4">
+          <div
+            class="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-gray-900 mr-3"
+          ></div>
+          <p class="text-base text-gray-700 font-medium">Đợi chút nhó <3...</p>
+        </div>
+      </div>
+
+      <!-- Result Area -->
+      <div id="resultBox" class="hidden">
+        <div class="bg-white border border-gray-200 rounded-lg p-8 mb-6">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-lg font-semibold text-gray-900">Kết quả</h2>
+            <div class="flex items-center gap-3">
+              <!-- Format Selector -->
+              <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 text-sm text-gray-600">
+                  <span class="font-medium">Định dạng</span>
+                </div>
+
+                <!-- Custom Dropdown -->
+                <div class="custom-dropdown">
+                  <button
+                    type="button"
+                    id="dropdownButton"
+                    class="dropdown-button"
+                  >
+                    <span id="selectedFormat" class="flex items-center gap-2">
+                      <span class="format-icon">🖼️</span>
+                      <span>PNG - Trong suốt</span>
+                    </span>
+                    <svg
+                      class="dropdown-arrow w-4 h-4 text-gray-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </button>
+
+                  <div id="dropdownMenu" class="dropdown-menu">
+                    <div
+                      class="dropdown-item selected"
+                      data-value="png"
+                      data-icon="🖼️"
+                      data-label="PNG - Trong suốt"
+                    >
+                      <span class="format-icon">🖼️</span>
+                      <span>PNG - Trong suốt</span>
+                    </div>
+                    <div
+                      class="dropdown-item"
+                      data-value="jpg"
+                      data-icon="📸"
+                      data-label="JPG - Nền trắng"
+                    >
+                      <span class="format-icon">📸</span>
+                      <span>JPG - Nền trắng</span>
+                    </div>
+                    <div
+                      class="dropdown-item"
+                      data-value="webp"
+                      data-icon="🌐"
+                      data-label="WEBP - Nén tốt"
+                    >
+                      <span class="format-icon">🌐</span>
+                      <span>WEBP - Nén tốt</span>
+                    </div>
+                    <div
+                      class="dropdown-item"
+                      data-value="bmp"
+                      data-icon="🎨"
+                      data-label="BMP - Không nén"
+                    >
+                      <span class="format-icon">🎨</span>
+                      <span>BMP - Không nén</span>
+                    </div>
+                    <div
+                      class="dropdown-item"
+                      data-value="svg"
+                      data-icon="📐"
+                      data-label="SVG - Vector"
+                    >
+                      <span class="format-icon">📐</span>
+                      <span>SVG - Vector</span>
+                    </div>
+                    <div
+                      class="dropdown-item"
+                      data-value="ico"
+                      data-icon="🔲"
+                      data-label="ICO - Icon"
+                    >
+                      <span class="format-icon">🔲</span>
+                      <span>ICO - Icon</span>
+                    </div>
+                    <div
+                      class="dropdown-item"
+                      data-value="tiff"
+                      data-icon="🖨️"
+                      data-label="TIFF - In ấn"
+                    >
+                      <span class="format-icon">🖨️</span>
+                      <span>TIFF - In ấn</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex gap-2">
+                <button
+                  id="downloadBtn"
+                  class="flex items-center gap-2 bg-gray-900 text-white font-medium py-2 px-4 rounded-lg smooth-transition hover:bg-gray-800"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                    />
+                  </svg>
+                  <span>Tải xuống</span>
+                </button>
+                <button
+                  id="newImageBtn"
+                  class="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg smooth-transition hover:bg-gray-50"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                  <span>Ảnh mới</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <!-- Original Image -->
+            <div class="space-y-2">
+              <p class="text-sm font-medium text-gray-600">Ảnh gốc</p>
+              <div
+                class="border border-gray-200 rounded-lg overflow-hidden bg-white"
+              >
+                <img id="originalImage" class="w-full h-auto" />
+              </div>
+            </div>
+
+            <!-- Result Image -->
+            <div class="space-y-2">
+              <p class="text-sm font-medium text-gray-600">Đã xóa nền</p>
+              <div
+                class="border border-gray-200 rounded-lg overflow-hidden checkerboard"
+              >
+                <img id="outputImage" class="w-full h-auto" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-32">
+      <div class="container mx-auto px-6 py-6">
+        <p class="text-center text-sm text-gray-500">
+          © 2025 Powered by Phu Thang
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      const fileInput = document.getElementById("fileInput");
+      const dropZone = document.getElementById("dropZone");
+      const uploadBtn = document.getElementById("uploadBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const previewImage = document.getElementById("previewImage");
+      const uploadPrompt = document.getElementById("uploadPrompt");
+      const loading = document.getElementById("loading");
+      const resultBox = document.getElementById("resultBox");
+      const originalImage = document.getElementById("originalImage");
+      const outputImage = document.getElementById("outputImage");
+      const downloadBtn = document.getElementById("downloadBtn");
+      const newImageBtn = document.getElementById("newImageBtn");
+      const btnText = document.getElementById("btnText");
+
+      let selectedFile = null;
+      let resultBlob = null;
+      let selectedFormat = "png";
+
+      // Custom Dropdown Logic
+      const dropdownButton = document.getElementById("dropdownButton");
+      const dropdownMenu = document.getElementById("dropdownMenu");
+      const selectedFormatEl = document.getElementById("selectedFormat");
+      const dropdownItems = document.querySelectorAll(".dropdown-item");
+
+      dropdownButton.addEventListener("click", (e) => {
+        e.stopPropagation();
+        dropdownButton.classList.toggle("active");
+        dropdownMenu.classList.toggle("show");
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener("click", () => {
+        dropdownButton.classList.remove("active");
+        dropdownMenu.classList.remove("show");
+      });
+
+      dropdownMenu.addEventListener("click", (e) => {
+        e.stopPropagation();
+      });
+
+      dropdownItems.forEach((item) => {
+        item.addEventListener("click", () => {
+          // Remove selected class from all items
+          dropdownItems.forEach((i) => i.classList.remove("selected"));
+
+          // Add selected class to clicked item
+          item.classList.add("selected");
+
+          // Update button text
+          const icon = item.dataset.icon;
+          const label = item.dataset.label;
+          selectedFormat = item.dataset.value;
+
+          selectedFormatEl.innerHTML = `
+            <span class="format-icon">${icon}</span>
+            <span>${label}</span>
+          `;
+
+          // Close dropdown
+          dropdownButton.classList.remove("active");
+          dropdownMenu.classList.remove("show");
+        });
+      });
+
+      // Click to upload
+      dropZone.addEventListener("click", () => fileInput.click());
+
+      // Drag and drop
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("border-purple-500", "bg-purple-50");
+      });
+
+      dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("border-purple-500", "bg-purple-50");
+      });
+
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("border-purple-500", "bg-purple-50");
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith("image/")) {
+          handleFileSelect(file);
+        }
+      });
+
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) handleFileSelect(file);
+      });
+
+      function handleFileSelect(file) {
+        selectedFile = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previewImage.src = e.target.result;
+          previewImage.classList.remove("hidden");
+          uploadPrompt.classList.add("hidden");
+          uploadBtn.disabled = false;
+          resetBtn.classList.remove("hidden");
+        };
+        reader.readAsDataURL(file);
+      }
+
+      resetBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectedFile = null;
+        fileInput.value = "";
+        previewImage.classList.add("hidden");
+        uploadPrompt.classList.remove("hidden");
+        uploadBtn.disabled = true;
+        resetBtn.classList.add("hidden");
+        resultBox.classList.add("hidden");
+      });
+
+      uploadBtn.addEventListener("click", async () => {
+        if (!selectedFile) {
+          alert("Vui lòng chọn ảnh trước!");
+          return;
+        }
+
+        // Show loading
+        loading.classList.remove("hidden");
+        resultBox.classList.add("hidden");
+        uploadBtn.disabled = true;
+        btnText.textContent = "Đợi chút nhé hihi...";
+
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+
+        try {
+          const response = await fetch("/remove-bg", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error("Lỗi xử lý ảnh!");
+          }
+
+          const blob = await response.blob();
+          resultBlob = blob;
+          const imgUrl = URL.createObjectURL(blob);
+
+          // Show result
+          originalImage.src = previewImage.src;
+          outputImage.src = imgUrl;
+          resultBox.classList.remove("hidden");
+        } catch (error) {
+          alert("Có lỗi xảy ra: " + error.message);
+        } finally {
+          loading.classList.add("hidden");
+          uploadBtn.disabled = false;
+          btnText.textContent = "🪄 Xóa Nền Ảnh";
+        }
+      });
+
+      downloadBtn.addEventListener("click", async () => {
+        if (!resultBlob) return;
+
+        const format = selectedFormat;
+
+        // Special handling for SVG
+        if (format === "svg") {
+          const img = new Image();
+          const imgUrl = URL.createObjectURL(resultBlob);
+
+          img.onload = () => {
+            // Create SVG with embedded image
+            const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+     width="${img.width}" height="${img.height}" viewBox="0 0 ${img.width} ${img.height}">
+  <image width="${img.width}" height="${img.height}" xlink:href="${imgUrl}"/>
+</svg>`;
+
+            const blob = new Blob([svgContent], { type: "image/svg+xml" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `phuthang-rem-bg-${Date.now()}.svg`;
+            a.click();
+            URL.revokeObjectURL(url);
+            URL.revokeObjectURL(imgUrl);
+          };
+
+          img.src = imgUrl;
+          return;
+        }
+
+        // Convert blob to canvas for format conversion
+        const img = new Image();
+        const imgUrl = URL.createObjectURL(resultBlob);
+
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d");
+
+          // For formats that don't support transparency, use white background
+          if (format === "jpg" || format === "bmp") {
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+
+          ctx.drawImage(img, 0, 0);
+
+          // Convert to selected format
+          let mimeType, quality, extension;
+
+          switch (format) {
+            case "png":
+              mimeType = "image/png";
+              quality = 1.0;
+              extension = "png";
+              break;
+            case "jpg":
+              mimeType = "image/jpeg";
+              quality = 0.95;
+              extension = "jpg";
+              break;
+            case "webp":
+              mimeType = "image/webp";
+              quality = 0.92;
+              extension = "webp";
+              break;
+            case "bmp":
+              mimeType = "image/bmp";
+              quality = 1.0;
+              extension = "bmp";
+              break;
+            case "tiff":
+              mimeType = "image/tiff";
+              quality = 1.0;
+              extension = "tiff";
+              break;
+            case "ico":
+              // ICO needs special size (typically 256x256 or 128x128)
+              const icoSize = Math.min(canvas.width, canvas.height, 256);
+              const icoCanvas = document.createElement("canvas");
+              icoCanvas.width = icoSize;
+              icoCanvas.height = icoSize;
+              const icoCtx = icoCanvas.getContext("2d");
+
+              // Scale and center the image
+              const scale = icoSize / Math.max(img.width, img.height);
+              const scaledWidth = img.width * scale;
+              const scaledHeight = img.height * scale;
+              const offsetX = (icoSize - scaledWidth) / 2;
+              const offsetY = (icoSize - scaledHeight) / 2;
+
+              icoCtx.drawImage(
+                img,
+                offsetX,
+                offsetY,
+                scaledWidth,
+                scaledHeight
+              );
+
+              icoCanvas.toBlob(
+                (blob) => {
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `phuthang-rem-bg-${Date.now()}.ico`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                },
+                "image/png",
+                1.0
+              );
+
+              URL.revokeObjectURL(imgUrl);
+              return;
+            default:
+              mimeType = "image/png";
+              quality = 1.0;
+              extension = "png";
+          }
+
+          canvas.toBlob(
+            (blob) => {
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `phuthang-rem-bg-${Date.now()}.${extension}`;
+              a.click();
+              URL.revokeObjectURL(url);
+            },
+            mimeType,
+            quality
+          );
+
+          URL.revokeObjectURL(imgUrl);
+        };
+
+        img.src = imgUrl;
+      });
+
+      newImageBtn.addEventListener("click", () => {
+        selectedFile = null;
+        fileInput.value = "";
+        previewImage.classList.add("hidden");
+        uploadPrompt.classList.remove("hidden");
+        uploadBtn.disabled = true;
+        resetBtn.classList.add("hidden");
+        resultBox.classList.add("hidden");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    </script>
+  </body>
+</html>
